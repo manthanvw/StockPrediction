@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Price Prediction</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+        }
+    </style>
+    <!-- Include Chart.js in the head section -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+</head>
+
+<body>
+    <div class="container">
+        <h1>Stock Price Prediction</h1>
+        <label for="stockSymbol">Enter Stock Symbol:</label>
+        <input type="text" id="stockSymbol" placeholder="e.g., AAPL">
+        <button onclick="getStockData()">Retrieve Data</button>
+
+        <h2>Historical Stock Data</h2>
+        <canvas id="stockChart" width="400" height="200"></canvas>
+
+        <div id="stockData"></div>
+
+        <h2>Price Prediction</h2>
+        <p id="prediction"></p>
+    </div>
+
+    <script>
+        async function getStockData() {
+            const stockSymbol = document.getElementById("stockSymbol").value;
+
+            try {
+                const historicalData = await fetchStockData(stockSymbol);
+
+                // Calculate a simple moving average (SMA) for demonstration purposes
+                const sma = calculateSMA(historicalData);
+
+                // Display historical data and prediction
+                displayStockData(historicalData);
+                displayPrediction(sma);
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        }
+
+        async function fetchStockData(stockSymbol) {
+            const apiKey = ' S9WV56HWTN4SXE4P'; // Replace with your Alpha Vantage API key
+            const apiUrl = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${stockSymbol}&interval=5min&apikey=${apiKey}`;
+
+            const response = await fetch(apiUrl);
+            if (!response.ok) {
+                throw new Error(`API request failed with status ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (data['Time Series (5min)'] === undefined) {
+                throw new Error('No data available for the given symbol');
+            }
+
+            // Parse and return the historical data as an array of objects
+            const timeSeriesData = data['Time Series (5min)'];
+            return Object.keys(timeSeriesData).map(date => ({
+                date,
+                price: parseFloat(timeSeriesData[date]['1. open'])
+            }));
+        }
+
+        function calculateSMA(data) {
+            // Replace this with your SMA calculation logic
+            // For simplicity, we'll calculate a 10-day SMA.
+            const period = 10;
+            const smaValues = [];
+
+            for (let i = period; i < data.length; i++) {
+                let sum = 0;
+                for (let j = i - period; j < i; j++) {
+                    sum += data[j].price;
+                }
+                const average = sum / period;
+                smaValues.push({ date: data[i].date, sma: average });
+            }
+
+            return smaValues;
+        }
+
+        function displayStockData(data) {
+            const stockDataDiv = document.getElementById("stockData");
+            stockDataDiv.innerHTML = "";
+            data.forEach(item => {
+                const p = document.createElement("p");
+                p.textContent = `${item.date}: $${item.price.toFixed(2)}`;
+                stockDataDiv.appendChild(p);
+            });
+        }
+
+        function displayPrediction(smaData) {
+            const predictionDiv = document.getElementById("prediction");
+            const latestSMA = smaData[smaData.length - 1];
+            predictionDiv.textContent = `Predicted Price (SMA): $${latestSMA.sma.toFixed(2)}`;
+        }
+
+        // Add this code inside the <script> tag in your HTML file
+        const ctx = document.getElementById("stockChart").getContext("2d");
+
+        async function getStockData() {
+            const stockSymbol = document.getElementById("stockSymbol").value;
+
+            try {
+                const historicalData = await fetchStockData(stockSymbol);
+
+                // Calculate a simple moving average (SMA) for demonstration purposes
+                const sma = calculateSMA(historicalData);
+
+                // Display historical data and prediction
+                displayStockData(historicalData);
+                displayPrediction(sma);
+
+                // Create and update the chart
+                createChart(historicalData, sma);
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        }
+
+        function createChart(data, smaData) {
+            // Extract dates and prices from the data
+            const dates = data.map(item => item.date);
+            const prices = data.map(item => item.price);
+            const smaValues = smaData.map(item => item.sma);
+
+            // Create a Chart.js line chart
+            new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: "Stock Price",
+                            data: prices,
+                            borderColor: "blue",
+                            fill: false
+                        },
+                        {
+                            label: "SMA",
+                            data: smaValues,
+                            borderColor: "green",
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        // Inside the createChart function, update the options for the x-axis as follows:
+                        x: {
+                            type: "time",
+                            time: {
+                                unit: "day",
+                                parser: "YYYY-MM-DD", // Date format used in your data
+                                tooltipFormat: "ll", // Date format for tooltips
+                            },
+                            title: {
+                                display: true,
+                                text: "Date"
+                            }
+                        },
+
+                        y: {
+                            title: {
+                                display: true,
+                                text: "Price"
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+    </script>
+</body>
+
+</html>
